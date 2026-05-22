@@ -1,14 +1,16 @@
-WITH faturamento_por_cliente AS (
-  SELECT 
-    c.nome AS nome_cliente,
-    SUM(p.valor_total) AS faturamento_cliente
-    FROM CLIENTES c
-    INNER JOIN PEDIDOS p ON c.id_cliente = p.id_cliente
-    GROUP BY c.nome
+WITH faturamento_mensal AS (
+    SELECT 
+        DATE_TRUNC('month', data_pedido) AS mes,
+        SUM(valor_total) AS faturamento_atual
+    FROM PEDIDOS
+    GROUP BY DATE_TRUNC('month', data_pedido)
 )
 SELECT 
-    nome_cliente,
-    faturamento_cliente,
-    SUM(faturamento_cliente) OVER(ORDER BY faturamento_cliente DESC) AS faturamento_acumulado
-FROM faturamento_por_cliente
-ORDER BY faturamento_cliente DESC; 
+    TO_CHAR(mes, 'YYYY-MM') AS periodo,
+    faturamento_atual,
+    LAG(faturamento_atual, 1) OVER (ORDER BY mes) AS faturamento_mes_anterior,
+    CONCAT(ROUND(((faturamento_atual - LAG(faturamento_atual, 1) OVER (ORDER BY mes)) / 
+           NULLIF(LAG(faturamento_atual, 1) OVER (ORDER BY mes), 0)) * 100, 2), '%') AS crescimento_mom
+FROM faturamento_mensal
+ORDER BY mes; 
+
